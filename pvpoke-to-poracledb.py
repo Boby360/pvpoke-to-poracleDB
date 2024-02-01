@@ -1,6 +1,8 @@
 import requests
 import json
 import mysql.connector
+import configparser
+
 
 #This script will grab data from the first row in the database that matches the ID.
 #It will do it for rows with and without pings, maintaining your pings and settings for your ping and non pings assuming that they are uniform.
@@ -9,32 +11,44 @@ import mysql.connector
 
 #This will endlessly increase your UID count and a better method should be used to reuse the values?
 
+#Todo:
+#The source data script does not perfectly align with pvpoke website and is not updated daily. Is there a better source? Should we scrape?
+#Sandslash Normal had a double entry in the database. Nothing else.
+#We could spit out a list of what has been added or altered into the webhook / Discord channel.
+#Download file and compare on a loop to see if it has changed, then commit only if there is a change.
+#Adding higher evo of a mon, won't report lower evo that can be the target rank on the target mon, right??
+#We could have multiple webhooks to the same channel, which we would use for sorting different setting formats.
+
+
+#I want to make this use a external config file for easy git updating.
+#We can also use data from /src/data/rankings/all/overall/rankings-1500.json for a true list.
+#File does however contain  934 lines, which in order from top to bottom lines up with the website.
+
+#Load config file
+config = configparser.ConfigParser()
+config.read('config.ini')
+
 db_config = {
-    'host': 'yourdbiphere',
-    'user': 'yourusernamehere',
-    'password': 'yourpasswordhere',
-    'database': 'yourdatabasehere'
+    'host': config['Database']['host'],
+    'user': config['Database']['user'],
+    'password': config['Database']['password'],
+    'database': config['Database']['database']
 }
 
 #Get ID and Form data
-master_data_url = "https://raw.githubusercontent.com/WatWowMap/Masterfile-Generator/master/master-latest-react-map.json"
+master_data_url = config['MasterData']['url']
 response = requests.get(master_data_url)
 master_data = response.json()
 
-
-
-#I have selected all, but there are specific leagues you can also choose from here:
-#https://github.com/pvpoke/pvpoke/tree/master/src/data/training/analysis
 league_dict = {
-    'GL': 'https://raw.githubusercontent.com/pvpoke/pvpoke/master/src/data/training/analysis/all/1500.json',
-    'UL': 'https://raw.githubusercontent.com/pvpoke/pvpoke/master/src/data/training/analysis/all/2500.json'
-    #'ML': 'https://raw.githubusercontent.com/pvpoke/pvpoke/master/src/data/training/analysis/all/10000.json'
+    'GL': config['Leagues']['GL'],
+    'UL': config['Leagues']['UL']
 }
 
 #Webhook or channel ID
-gl_webhook = 'YourWebhookHere'
-ul_webhook = 'YourWebhookHere'
-ml_webhook = ''
+gl_webhook = config['Webhooks']['gl_webhook']
+ul_webhook = config['Webhooks']['ul_webhook']
+ml_webhook = config['Webhooks']['ml_webhook']  # This might be empty, which is okay
 
 
 for var in league_dict:
