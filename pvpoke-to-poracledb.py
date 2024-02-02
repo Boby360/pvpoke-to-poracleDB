@@ -12,17 +12,17 @@ import configparser
 #This will endlessly increase your UID count and a better method should be used to reuse the values?
 
 #Todo:
-#The source data script does not perfectly align with pvpoke website and is not updated daily. Is there a better source? Should we scrape?
 #Sandslash Normal had a double entry in the database. Nothing else.
 #We could spit out a list of what has been added or altered into the webhook / Discord channel.
 #Download file and compare on a loop to see if it has changed, then commit only if there is a change.
 #Adding higher evo of a mon, won't report lower evo that can be the target rank on the target mon, right??
 #We could have multiple webhooks to the same channel, which we would use for sorting different setting formats.
 
-
-#I want to make this use a external config file for easy git updating.
-#We can also use data from /src/data/rankings/all/overall/rankings-1500.json for a true list.
-#File does however contain  934 lines, which in order from top to bottom lines up with the website.
+#Some mons that have more than 1 underscore in their speciesId do not work with this method.
+#Oricorio_pom_pom: Form in master: pompom
+#Porygon_z_shadow: In master: Thinks not have a shadow form?
+#darmanitan_galarian_standard: Form in master: Galarian Standard
+#
 
 #Load config file
 config = configparser.ConfigParser()
@@ -50,7 +50,8 @@ gl_webhook = config['Webhooks']['gl_webhook']
 ul_webhook = config['Webhooks']['ul_webhook']
 ml_webhook = config['Webhooks']['ml_webhook']  # This might be empty, which is okay
 
-
+tracking_limit = config.getint('Limit', 'tracking_limit')
+tracking_limit += 1
 for var in league_dict:
     # Get the URL for the current league
     url = league_dict[var]
@@ -80,30 +81,35 @@ for var in league_dict:
     
     data = response.json()
     #Put everthing under "Performers" in an array, and store in variable.
-    performers = data["performers"]
     
+    #performers = data["performers"]
+    #performers = data["performers"]
     
     #For each performer inside of the performers Array/Variable
-    for performer in performers:
+    count = 0
+    for item in data:
+        if count < tracking_limit:
+            pokemon_name = item["speciesId"].split()[0] 
+            #Split the pokemon name by spaces? This should contain anything with an underscore.
+            #pokemon_name = performer["pokemon"].split()[0] 
 
-        #Split the pokemon name by spaces? This should contain anything with an underscore.
-        pokemon_name = performer["pokemon"].split()[0] 
 
-
-        #This will spit out mons in the format of mon_form if the form exists.
-        if "_shadow" not in pokemon_name:
-            if '_' in pokemon_name:
-                split_values = pokemon_name.split('_')
-                pokemon = split_values[0]
-                pokemon_names.append(pokemon)
-                form = split_values[1]
-                form_names.append(form)
-            else:
-                mon = pokemon_name
-                pokemon_names.append(pokemon_name)
-                form = "0"
-                form_names.append(form)
-
+            #This will spit out mons in the format of mon_form if the form exists.
+            if "_shadow" not in pokemon_name:
+                if '_' in pokemon_name:
+                    split_values = pokemon_name.split('_')
+                    pokemon = split_values[0]
+                    pokemon_names.append(pokemon)
+                    form = split_values[1]
+                    form_names.append(form)
+                else:
+                    mon = pokemon_name
+                    pokemon_names.append(pokemon_name)
+                    form = "0"
+                    form_names.append(form)
+                count += 1
+        else:
+            break
     #print("Pokemon Names:", pokemon_names, form_names)
     #print("Pokemon names:", pokemon_names)
     #print(str(len(pokemon_names)))
@@ -117,7 +123,7 @@ for var in league_dict:
     pokemon_ids = []
     form_ids = []
 
-    # Iterate through each Pokemon name
+    # Iterate through each Pokemon name.
     for pokemon_name, form_name in zip(pokemon_names, form_names):
         # Search for the Pokemon in the JSON data
         #print("1.Printing pokemon_name and form_name")
@@ -261,5 +267,7 @@ for var in league_dict:
     # Close the connection
     cursor.close()
     conn.close()
+    
+    
     print("END")
     #break
